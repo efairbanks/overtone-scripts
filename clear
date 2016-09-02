@@ -1,0 +1,95 @@
+(load-file "./algolib.clj")
+
+(def bpm (* 110 1))
+(def clk (metronome bpm))
+
+(def chords
+  [
+   (chord :c4 :minor)
+   (chord :g4 :minor)
+   (chord :f4 :major)
+   (chord :a4 :major)
+   (chord :c4 :major)
+   (chord :g4 :major)
+   (chord :f4 :minor)
+   (chord :a4 :minor)
+   ])
+
+(defn play-beat [clock tick]
+  (let [chord (wrap-at chords (section-index tick 8))]
+
+    (cmap (fn [note]
+            (play-rhythm-for-tick
+             (E 9 14)
+             7
+             tick
+             clock
+             port-res
+             [:freq (midi->hz note)
+              :amp (db->amp -29)
+              :decay 10])) (xpose-notes chord 68))
+
+    (play-rhythm-for-tick
+     (E 13 20)
+     10
+     tick
+     clock
+     port-res
+     [:freq (midi->hz (first (xpose-notes chord 31)))
+      :amp (db->amp -17)
+      :decay 5])
+
+    (play-rhythm-for-tick
+     (E 31 44)
+     11
+     tick
+     clock
+     port-res
+     [:amp (db->amp -18)
+      :decay 2
+      :freq (fn []
+              (do (e-set :pitch-index (+ 1 (e-get :pitch-index -1)))
+                  (midi->hz (wrap-at (xpose-notes chord 55) (e-get :pitch-index 0)))))])
+
+    (play-rhythm-for-tick
+     (E 41 52)
+     13
+     tick
+     clock
+     port-res
+     [:amp (db->amp -20)
+      :decay 3
+      :freq (fn []
+              (do (e-set :pitch-index (+ 1 (e-get :pitch-index -1)))
+                  (midi->hz (wrap-at (xpose-notes (shl chord 1) 60) (e-get :pitch-index 0)))))])
+
+
+
+    ))
+
+(defn play
+  [clock tick]
+  (let [beat (clock)]
+    (do (at (clock beat) (play-beat clock tick))
+        (apply-by (clock (inc beat)) play [clock (+ tick 1)]))))
+
+(play clk 0)
+
+                                        ; ---- ;
+                                        ; ---- ;
+                                        ; ---- ;
+
+(comment
+  (def vocals (load-sample-dir "/sounds/vocals"))
+
+  (def vocals (load-sample))
+
+  (do
+    (definst growl [buf 0 len 1]
+      (let [env (env-gen (envelope [0 1 1 0] [0.001 (- (* 2 len) 0.002) 0.001]))
+            tone (warp1 2 buf (mouse-x 0 1) 1 (/ 1.0 10) -1)
+            output (* 1 tone)]
+        (out 0 output)))
+    (growl :buf (wrap-at vocals 0)))
+
+  (grain-sin))
